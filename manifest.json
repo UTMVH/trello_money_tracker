@@ -1,0 +1,15 @@
+{
+  "name": "Trello Money Tracker MXN",
+  "details": "Track money amounts in MXN for Trello cards with payment calculations",
+  "author": "Money Tracker Team",
+  "capabilities": [
+    "card-badges",
+    "card-buttons",
+    "board-buttons"
+  ],
+  "connectors": {
+    "iframe": {
+      "url": "./index.html"
+    }
+  }
+} 

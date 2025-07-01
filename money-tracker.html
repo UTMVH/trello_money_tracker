@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Money Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="money-tracker-container">
+        <div class="current-status">
+            <h3>Estado Actual</h3>
+            <div class="status-display">
+                <div class="amount-display">
+                    <span class="label">Monto Total:</span>
+                    <span id="currentAmount" class="amount">$0.00 MXN</span>
+                </div>
+                <div class="payment-info">
+                    <div class="payment-row">
+                        <span class="label">Porcentaje Pagado:</span>
+                        <span id="currentPercentage" class="percentage">0%</span>
+                    </div>
+                    <div class="payment-row">
+                        <span class="label">Monto Pagado:</span>
+                        <span id="paidAmount" class="paid">$0.00 MXN</span>
+                    </div>
+                    <div class="payment-row">
+                        <span class="label">Monto Adeudado:</span>
+                        <span id="owedAmount" class="owed">$0.00 MXN</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <h3>Configurar Monto</h3>
+            <div class="input-group">
+                <label for="moneyInput">Monto Total (MXN):</label>
+                <input type="text" id="moneyInput" placeholder="ej. 1500, $2,500.50" />
+            </div>
+            <div class="input-group">
+                <label for="paymentsInput">Porcentaje de Pagos (%):</label>
+                <input type="number" id="paymentsInput" min="0" max="100" step="0.1" placeholder="ej. 25.5" />
+                <small>Este campo se sincroniza con el campo "Pagos" de la tarjeta</small>
+            </div>
+            <button id="updateMoney" class="btn btn-primary">Actualizar Información</button>
+        </div>
+
+        <div class="history-section">
+            <h3>Historial de Cambios</h3>
+            <div id="moneyHistory" class="history-list">
+                <p class="no-history">No hay historial disponible</p>
+            </div>
+            <button id="clearHistory" class="btn btn-secondary">Limpiar Historial</button>
+        </div>
+    </div>
+
+    <script src="https://p.trellocdn.com/power-up.min.js"></script>
+    <script>
+        const t = window.TrelloPowerUp.iframe();
+        let currentData = {};
+
+        // Load current money data
+        function loadMoneyData() {
+            Promise.all([
+                t.get('card', 'shared', 'moneyTracker'),
+                t.card('name', 'customFields')
+            ])
+            .then(function([moneyData, cardData]) {
+                currentData = moneyData || {
+                    totalAmount: 0,
+                    paymentsPercentage: 0,
+                    history: []
+                };
+
+                // Try to get Pagos percentage from custom fields
+                if (cardData.customFields) {
+                    const pagosField = cardData.customFields.find(field => 
+                        field.name && field.name.toLowerCase().includes('pagos')
+                    );
+                    if (pagosField && pagosField.value) {
+                        currentData.paymentsPercentage = parseFloat(pagosField.value) || 0;
+                    }
+                }
+
+                updateDisplay();
+            })
+            .catch(function(error) {
+                console.error('Error loading money data:', error);
+            });
+        }
+
+        // Update display with current data
+        function updateDisplay() {
+            const calculations = window.parent.MoneyTracker.calculatePayments(
+                currentData.totalAmount || 0,
+                currentData.paymentsPercentage || 0
+            );
+
+            document.getElementById('currentAmount').textContent = 
+                window.parent.MoneyTracker.formatMoney(calculations.total);
+            document.getElementById('currentPercentage').textContent = 
+                `${calculations.percentage}%`;
+            document.getElementById('paidAmount').textContent = 
+                window.parent.MoneyTracker.formatMoney(calculations.paid);
+            document.getElementById('owedAmount').textContent = 
+                window.parent.MoneyTracker.formatMoney(calculations.owed);
+
+            // Update input fields
+            document.getElementById('moneyInput').value = calculations.total || '';
+            document.getElementById('paymentsInput').value = calculations.percentage || '';
+
+            // Update history
+            updateHistoryDisplay();
+        }
+
+        // Update history display
+        function updateHistoryDisplay() {
+            const historyContainer = document.getElementById('moneyHistory');
+            const history = currentData.history || [];
+
+            if (history.length === 0) {
+                historyContainer.innerHTML = '<p class="no-history">No hay historial disponible</p>';
+                return;
+            }
+
+            const historyHTML = history.map(entry => {
+                const date = new Date(entry.date).toLocaleString('es-MX');
+                return `
+                    <div class="history-entry">
+                        <div class="history-date">${date}</div>
+                        <div class="history-details">
+                            <div>Monto: ${window.parent.MoneyTracker.formatMoney(entry.amount)}</div>
+                            <div>Pagos: ${entry.paymentsPercentage}%</div>
+                            ${entry.description ? `<div class="history-description">${entry.description}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            historyContainer.innerHTML = historyHTML;
+        }
+
+        // Save money data
+        function saveMoneyData() {
+            const moneyInput = document.getElementById('moneyInput').value;
+            const paymentsInput = document.getElementById('paymentsInput').value;
+
+            const totalAmount = window.parent.MoneyTracker.parseMoneyInput(moneyInput);
+            const paymentsPercentage = Math.max(0, Math.min(100, parseFloat(paymentsInput) || 0));
+
+            // Add to history if there's a change
+            const hasChanged = currentData.totalAmount !== totalAmount || 
+                              currentData.paymentsPercentage !== paymentsPercentage;
+
+            if (hasChanged) {
+                currentData.history = currentData.history || [];
+                currentData.history.unshift({
+                    date: new Date().toISOString(),
+                    amount: totalAmount,
+                    paymentsPercentage: paymentsPercentage,
+                    description: `Actualización: ${window.parent.MoneyTracker.formatMoney(totalAmount)}, ${paymentsPercentage}% pagado`
+                });
+
+                // Keep only last 20 entries
+                if (currentData.history.length > 20) {
+                    currentData.history = currentData.history.slice(0, 20);
+                }
+            }
+
+            currentData.totalAmount = totalAmount;
+            currentData.paymentsPercentage = paymentsPercentage;
+
+            return t.set('card', 'shared', 'moneyTracker', currentData)
+            .then(function() {
+                updateDisplay();
+                // Refresh card badges
+                return t.closePopup();
+            });
+        }
+
+        // Clear history
+        function clearHistory() {
+            if (confirm('¿Estás seguro de que quieres limpiar el historial?')) {
+                currentData.history = [];
+                t.set('card', 'shared', 'moneyTracker', currentData)
+                .then(function() {
+                    updateDisplay();
+                });
+            }
+        }
+
+        // Event listeners
+        document.getElementById('updateMoney').addEventListener('click', saveMoneyData);
+        document.getElementById('clearHistory').addEventListener('click', clearHistory);
+
+        // Enter key support for inputs
+        ['moneyInput', 'paymentsInput'].forEach(function(inputId) {
+            document.getElementById(inputId).addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    saveMoneyData();
+                }
+            });
+        });
+
+        // Load data when popup opens
+        loadMoneyData();
+    </script>
+</body>
+</html> 

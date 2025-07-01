@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - Trello Money Tracker MXN</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .demo-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+        }
+        .demo-title {
+            color: #0079bf;
+            margin-bottom: 15px;
+        }
+        .demo-description {
+            color: #6b778c;
+            margin-bottom: 15px;
+        }
+        .iframe-container {
+            border: 2px solid #0079bf;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+        .iframe-container iframe {
+            width: 100%;
+            border: none;
+        }
+        .demo-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .demo-stat {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border-left: 4px solid #0079bf;
+        }
+        .demo-stat-label {
+            font-size: 12px;
+            color: #6b778c;
+            margin-bottom: 5px;
+        }
+        .demo-stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #172b4d;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1 style="text-align: center; color: #0079bf;">🏦 Trello Money Tracker MXN - Demo</h1>
+        
+        <div class="demo-stats">
+            <div class="demo-stat">
+                <div class="demo-stat-label">Archivos Creados</div>
+                <div class="demo-stat-value">8</div>
+            </div>
+            <div class="demo-stat">
+                <div class="demo-stat-label">Características</div>
+                <div class="demo-stat-value">6+</div>
+            </div>
+            <div class="demo-stat">
+                <div class="demo-stat-label">Idioma</div>
+                <div class="demo-stat-value">Español</div>
+            </div>
+            <div class="demo-stat">
+                <div class="demo-stat-label">Moneda</div>
+                <div class="demo-stat-value">MXN</div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2 class="demo-title">📋 1. Interfaz de Seguimiento de Dinero</h2>
+            <p class="demo-description">Esta es la interfaz principal donde los usuarios configuran montos y porcentajes de pago para cada tarjeta.</p>
+            <div class="iframe-container">
+                <iframe src="money-tracker.html" height="450"></iframe>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2 class="demo-title">📊 2. Reporte Financiero del Tablero</h2>
+            <p class="demo-description">Vista completa de todos los montos del tablero con estadísticas, filtros y exportación CSV.</p>
+            <div class="iframe-container">
+                <iframe src="money-report.html" height="600"></iframe>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2 class="demo-title">🚀 Características Principales</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                <div style="background: #e3fcef; padding: 15px; border-radius: 6px; border-left: 4px solid #00875a;">
+                    <h4 style="margin: 0 0 8px 0; color: #00875a;">💰 Seguimiento de Montos</h4>
+                    <p style="margin: 0; font-size: 14px; color: #172b4d;">Registra montos totales en MXN para cada tarjeta con formatos flexibles de entrada.</p>
+                </div>
+                <div style="background: #fff4e6; padding: 15px; border-radius: 6px; border-left: 4px solid #ff8b00;">
+                    <h4 style="margin: 0 0 8px 0; color: #ff8b00;">📊 Cálculos Automáticos</h4>
+                    <p style="margin: 0; font-size: 14px; color: #172b4d;">Calcula automáticamente montos pagados y adeudados usando el campo "Pagos".</p>
+                </div>
+                <div style="background: #e6f4ff; padding: 15px; border-radius: 6px; border-left: 4px solid #0079bf;">
+                    <h4 style="margin: 0 0 8px 0; color: #0079bf;">🏷️ Badges Visuales</h4>
+                    <p style="margin: 0; font-size: 14px; color: #172b4d;">Indicadores visuales de montos y estados de pago directamente en las tarjetas.</p>
+                </div>
+                <div style="background: #ffebe6; padding: 15px; border-radius: 6px; border-left: 4px solid #de350b;">
+                    <h4 style="margin: 0 0 8px 0; color: #de350b;">📈 Reportes Detallados</h4>
+                    <p style="margin: 0; font-size: 14px; color: #172b4d;">Reportes comprehensivos con filtros, ordenamiento y exportación CSV.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2 class="demo-title">⚙️ Pasos para Implementar</h2>
+            <ol style="font-size: 14px; line-height: 1.6;">
+                <li><strong>Subir archivos:</strong> Sube todos los archivos a un servidor con HTTPS (GitHub Pages, Netlify, etc.)</li>
+                <li><strong>Crear Power-Up:</strong> Ve a <a href="https://trello.com/power-ups/admin" target="_blank">Trello Power-Up Admin</a> y crea un nuevo Power-Up</li>
+                <li><strong>Configurar URL:</strong> Establece la URL del iframe connector como <code>https://tu-dominio.com/index.html</code></li>
+                <li><strong>Habilitar capacidades:</strong> Activa card-badges, card-buttons, y board-buttons</li>
+                <li><strong>Instalar en tablero:</strong> Habilita el Power-Up en tus tableros de Trello</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f4f5f7; border-radius: 8px;">
+            <h3 style="color: #0079bf; margin-bottom: 10px;">🎉 ¡Power-Up Listo!</h3>
+            <p style="color: #6b778c; margin: 0;">Tu Power-Up de seguimiento financiero está completo y listo para ser instalado en Trello.</p>
+        </div>
+    </div>
+</body>
+</html> 

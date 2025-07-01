@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Money Report</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="money-report-container">
+        <div class="report-header">
+            <h2>Reporte Financiero del Tablero</h2>
+            <button id="refreshReport" class="btn btn-secondary">Actualizar</button>
+            <button id="exportReport" class="btn btn-primary">Exportar CSV</button>
+        </div>
+
+        <div class="summary-section">
+            <h3>Resumen General</h3>
+            <div class="summary-cards">
+                <div class="summary-card total">
+                    <div class="summary-label">Monto Total</div>
+                    <div id="totalAmount" class="summary-value">$0.00 MXN</div>
+                </div>
+                <div class="summary-card paid">
+                    <div class="summary-label">Total Pagado</div>
+                    <div id="totalPaid" class="summary-value">$0.00 MXN</div>
+                </div>
+                <div class="summary-card owed">
+                    <div class="summary-label">Total Adeudado</div>
+                    <div id="totalOwed" class="summary-value">$0.00 MXN</div>
+                </div>
+                <div class="summary-card percentage">
+                    <div class="summary-label">% Pagado Promedio</div>
+                    <div id="averagePercentage" class="summary-value">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters-section">
+            <h3>Filtros</h3>
+            <div class="filter-controls">
+                <select id="statusFilter">
+                    <option value="all">Todas las tarjetas</option>
+                    <option value="paid">Solo pagadas (100%)</option>
+                    <option value="partial">Pagos parciales (1-99%)</option>
+                    <option value="unpaid">Sin pagos (0%)</option>
+                </select>
+                <select id="sortBy">
+                    <option value="amount-desc">Monto (Mayor a Menor)</option>
+                    <option value="amount-asc">Monto (Menor a Mayor)</option>
+                    <option value="percentage-desc">% Pagado (Mayor a Menor)</option>
+                    <option value="percentage-asc">% Pagado (Menor a Mayor)</option>
+                    <option value="name">Nombre de Tarjeta</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="cards-section">
+            <h3>Detalle por Tarjeta</h3>
+            <div id="cardsReport" class="cards-list">
+                <div class="loading">Cargando datos...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://p.trellocdn.com/power-up.min.js"></script>
+    <script>
+        const t = window.TrelloPowerUp.iframe();
+        let allCardsData = [];
+        let filteredCardsData = [];
+
+        // Load all cards data
+        function loadReportData() {
+            document.getElementById('cardsReport').innerHTML = '<div class="loading">Cargando datos...</div>';
+            
+            window.parent.MoneyTracker.getBoardMoneyData(t)
+            .then(function(cardsData) {
+                allCardsData = cardsData.filter(item => 
+                    item.moneyData && item.moneyData.totalAmount > 0
+                );
+                
+                updateSummary();
+                filterAndDisplayCards();
+            })
+            .catch(function(error) {
+                console.error('Error loading report data:', error);
+                document.getElementById('cardsReport').innerHTML = 
+                    '<div class="error">Error cargando los datos del reporte</div>';
+            });
+        }
+
+        // Update summary statistics
+        function updateSummary() {
+            if (allCardsData.length === 0) {
+                document.getElementById('totalAmount').textContent = '$0.00 MXN';
+                document.getElementById('totalPaid').textContent = '$0.00 MXN';
+                document.getElementById('totalOwed').textContent = '$0.00 MXN';
+                document.getElementById('averagePercentage').textContent = '0%';
+                return;
+            }
+
+            let totalAmount = 0;
+            let totalPaid = 0;
+            let totalPercentage = 0;
+
+            allCardsData.forEach(function(item) {
+                const data = item.moneyData;
+                const calculations = window.parent.MoneyTracker.calculatePayments(
+                    data.totalAmount || 0,
+                    data.paymentsPercentage || 0
+                );
+
+                totalAmount += calculations.total;
+                totalPaid += calculations.paid;
+                totalPercentage += calculations.percentage;
+            });
+
+            const totalOwed = totalAmount - totalPaid;
+            const averagePercentage = Math.round(totalPercentage / allCardsData.length * 10) / 10;
+
+            document.getElementById('totalAmount').textContent = 
+                window.parent.MoneyTracker.formatMoney(totalAmount);
+            document.getElementById('totalPaid').textContent = 
+                window.parent.MoneyTracker.formatMoney(totalPaid);
+            document.getElementById('totalOwed').textContent = 
+                window.parent.MoneyTracker.formatMoney(totalOwed);
+            document.getElementById('averagePercentage').textContent = `${averagePercentage}%`;
+        }
+
+        // Filter and display cards
+        function filterAndDisplayCards() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+
+            // Filter cards
+            filteredCardsData = allCardsData.filter(function(item) {
+                const percentage = item.moneyData.paymentsPercentage || 0;
+                
+                switch(statusFilter) {
+                    case 'paid':
+                        return percentage >= 100;
+                    case 'partial':
+                        return percentage > 0 && percentage < 100;
+                    case 'unpaid':
+                        return percentage === 0;
+                    default:
+                        return true;
+                }
+            });
+
+            // Sort cards
+            filteredCardsData.sort(function(a, b) {
+                switch(sortBy) {
+                    case 'amount-desc':
+                        return (b.moneyData.totalAmount || 0) - (a.moneyData.totalAmount || 0);
+                    case 'amount-asc':
+                        return (a.moneyData.totalAmount || 0) - (b.moneyData.totalAmount || 0);
+                    case 'percentage-desc':
+                        return (b.moneyData.paymentsPercentage || 0) - (a.moneyData.paymentsPercentage || 0);
+                    case 'percentage-asc':
+                        return (a.moneyData.paymentsPercentage || 0) - (b.moneyData.paymentsPercentage || 0);
+                    case 'name':
+                        return a.card.name.localeCompare(b.card.name);
+                    default:
+                        return 0;
+                }
+            });
+
+            displayCards();
+        }
+
+        // Display cards list
+        function displayCards() {
+            const container = document.getElementById('cardsReport');
+
+            if (filteredCardsData.length === 0) {
+                container.innerHTML = '<div class="no-data">No se encontraron tarjetas con los filtros seleccionados</div>';
+                return;
+            }
+
+            const cardsHTML = filteredCardsData.map(function(item) {
+                const card = item.card;
+                const data = item.moneyData;
+                const calculations = window.parent.MoneyTracker.calculatePayments(
+                    data.totalAmount || 0,
+                    data.paymentsPercentage || 0
+                );
+
+                const statusClass = calculations.percentage >= 100 ? 'paid' : 
+                                   calculations.percentage > 0 ? 'partial' : 'unpaid';
+
+                return `
+                    <div class="card-report-item ${statusClass}">
+                        <div class="card-header">
+                            <h4 class="card-name">${card.name}</h4>
+                            <div class="card-status ${statusClass}">
+                                ${calculations.percentage >= 100 ? 'Pagado' : 
+                                  calculations.percentage > 0 ? 'Parcial' : 'Sin pagar'}
+                            </div>
+                        </div>
+                        <div class="card-details">
+                            <div class="detail-row">
+                                <span class="label">Monto Total:</span>
+                                <span class="value">${window.parent.MoneyTracker.formatMoney(calculations.total)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Porcentaje Pagado:</span>
+                                <span class="value">${calculations.percentage}%</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Monto Pagado:</span>
+                                <span class="value paid">${window.parent.MoneyTracker.formatMoney(calculations.paid)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Monto Adeudado:</span>
+                                <span class="value owed">${window.parent.MoneyTracker.formatMoney(calculations.owed)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = cardsHTML;
+        }
+
+        // Export to CSV
+        function exportToCSV() {
+            if (allCardsData.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            const headers = [
+                'Tarjeta',
+                'Monto Total (MXN)',
+                'Porcentaje Pagado (%)',
+                'Monto Pagado (MXN)',
+                'Monto Adeudado (MXN)',
+                'Estado'
+            ];
+
+            const rows = allCardsData.map(function(item) {
+                const card = item.card;
+                const data = item.moneyData;
+                const calculations = window.parent.MoneyTracker.calculatePayments(
+                    data.totalAmount || 0,
+                    data.paymentsPercentage || 0
+                );
+
+                const status = calculations.percentage >= 100 ? 'Pagado' : 
+                              calculations.percentage > 0 ? 'Parcial' : 'Sin pagar';
+
+                return [
+                    `"${card.name.replace(/"/g, '""')}"`,
+                    calculations.total,
+                    calculations.percentage,
+                    calculations.paid,
+                    calculations.owed,
+                    status
+                ];
+            });
+
+            const csvContent = [headers.join(',')]
+                .concat(rows.map(row => row.join(',')))
+                .join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `reporte-financiero-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Event listeners
+        document.getElementById('refreshReport').addEventListener('click', loadReportData);
+        document.getElementById('exportReport').addEventListener('click', exportToCSV);
+        document.getElementById('statusFilter').addEventListener('change', filterAndDisplayCards);
+        document.getElementById('sortBy').addEventListener('change', filterAndDisplayCards);
+
+        // Load data when popup opens
+        loadReportData();
+    </script>
+</body>
+</html> 
