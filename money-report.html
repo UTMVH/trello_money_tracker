@@ -68,11 +68,67 @@
         let allCardsData = [];
         let filteredCardsData = [];
 
+        // Utility functions for money calculations (included locally)
+        const MoneyTracker = {
+            // Parse money input (handles various formats)
+            parseMoneyInput: function(input) {
+                if (!input) return 0;
+                
+                // Remove currency symbols and spaces
+                const cleanInput = input.toString().replace(/[$,MXN\s]/g, '');
+                
+                // Convert to number
+                const amount = parseFloat(cleanInput);
+                
+                return isNaN(amount) ? 0 : Math.round(amount * 100) / 100; // Round to 2 decimal places
+            },
+
+            // Format money for display
+            formatMoney: function(amount) {
+                return `$${amount.toLocaleString('es-MX', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })} MXN`;
+            },
+
+            // Calculate payment details
+            calculatePayments: function(totalAmount, paymentsPercentage) {
+                const percentage = Math.max(0, Math.min(100, paymentsPercentage || 0));
+                const paidAmount = Math.round((totalAmount * percentage) / 100 * 100) / 100;
+                const owedAmount = Math.round((totalAmount - paidAmount) * 100) / 100;
+                
+                return {
+                    total: totalAmount,
+                    percentage: percentage,
+                    paid: paidAmount,
+                    owed: owedAmount
+                };
+            },
+
+            // Get all cards data for board reports
+            getBoardMoneyData: function(t) {
+                return t.cards('all')
+                .then(function(cards) {
+                    const promises = cards.map(card => {
+                        return t.get(card.id, 'shared', 'moneyTracker')
+                        .then(function(moneyData) {
+                            return {
+                                card: card,
+                                moneyData: moneyData || {}
+                            };
+                        });
+                    });
+                    
+                    return Promise.all(promises);
+                });
+            }
+        };
+
         // Load all cards data
         function loadReportData() {
             document.getElementById('cardsReport').innerHTML = '<div class="loading">Cargando datos...</div>';
             
-            window.parent.MoneyTracker.getBoardMoneyData(t)
+            MoneyTracker.getBoardMoneyData(t)
             .then(function(cardsData) {
                 allCardsData = cardsData.filter(item => 
                     item.moneyData && item.moneyData.totalAmount > 0
@@ -104,7 +160,7 @@
 
             allCardsData.forEach(function(item) {
                 const data = item.moneyData;
-                const calculations = window.parent.MoneyTracker.calculatePayments(
+                const calculations = MoneyTracker.calculatePayments(
                     data.totalAmount || 0,
                     data.paymentsPercentage || 0
                 );
@@ -118,11 +174,11 @@
             const averagePercentage = Math.round(totalPercentage / allCardsData.length * 10) / 10;
 
             document.getElementById('totalAmount').textContent = 
-                window.parent.MoneyTracker.formatMoney(totalAmount);
+                MoneyTracker.formatMoney(totalAmount);
             document.getElementById('totalPaid').textContent = 
-                window.parent.MoneyTracker.formatMoney(totalPaid);
+                MoneyTracker.formatMoney(totalPaid);
             document.getElementById('totalOwed').textContent = 
-                window.parent.MoneyTracker.formatMoney(totalOwed);
+                MoneyTracker.formatMoney(totalOwed);
             document.getElementById('averagePercentage').textContent = `${averagePercentage}%`;
         }
 
@@ -180,7 +236,7 @@
             const cardsHTML = filteredCardsData.map(function(item) {
                 const card = item.card;
                 const data = item.moneyData;
-                const calculations = window.parent.MoneyTracker.calculatePayments(
+                const calculations = MoneyTracker.calculatePayments(
                     data.totalAmount || 0,
                     data.paymentsPercentage || 0
                 );
@@ -200,7 +256,7 @@
                         <div class="card-details">
                             <div class="detail-row">
                                 <span class="label">Monto Total:</span>
-                                <span class="value">${window.parent.MoneyTracker.formatMoney(calculations.total)}</span>
+                                <span class="value">${MoneyTracker.formatMoney(calculations.total)}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="label">Porcentaje Pagado:</span>
@@ -208,11 +264,11 @@
                             </div>
                             <div class="detail-row">
                                 <span class="label">Monto Pagado:</span>
-                                <span class="value paid">${window.parent.MoneyTracker.formatMoney(calculations.paid)}</span>
+                                <span class="value paid">${MoneyTracker.formatMoney(calculations.paid)}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="label">Monto Adeudado:</span>
-                                <span class="value owed">${window.parent.MoneyTracker.formatMoney(calculations.owed)}</span>
+                                <span class="value owed">${MoneyTracker.formatMoney(calculations.owed)}</span>
                             </div>
                         </div>
                     </div>
@@ -241,7 +297,7 @@
             const rows = allCardsData.map(function(item) {
                 const card = item.card;
                 const data = item.moneyData;
-                const calculations = window.parent.MoneyTracker.calculatePayments(
+                const calculations = MoneyTracker.calculatePayments(
                     data.totalAmount || 0,
                     data.paymentsPercentage || 0
                 );

@@ -105,23 +105,5 @@ window.MoneyTracker = {
             paid: paidAmount,
             owed: owedAmount
         };
-    },
-
-    // Get all cards data for board reports
-    getBoardMoneyData: function(t) {
-        return t.cards('all')
-        .then(function(cards) {
-            const promises = cards.map(card => {
-                return t.get(card.id, 'shared', 'moneyTracker')
-                .then(function(moneyData) {
-                    return {
-                        card: card,
-                        moneyData: moneyData || {}
-                    };
-                });
-            });
-            
-            return Promise.all(promises);
-        });
     }
 }; 
