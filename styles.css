@@ -333,6 +333,74 @@ h4 {
     margin-top: 12px;
 }
 
+/* Date filter section */
+.date-filter-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e1e4e9;
+}
+
+.date-filter-section h4 {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #172b4d;
+}
+
+.date-filter-controls {
+    margin-bottom: 12px;
+}
+
+.date-filter-controls select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.date-filter-controls select:focus {
+    outline: none;
+    border-color: #0079bf;
+}
+
+.date-range-inputs {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 12px;
+}
+
+.date-input-group {
+    margin-bottom: 12px;
+}
+
+.date-input-group:last-of-type {
+    margin-bottom: 16px;
+}
+
+.date-input-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #172b4d;
+}
+
+.date-input-group input[type="date"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.date-input-group input[type="date"]:focus {
+    outline: none;
+    border-color: #0079bf;
+}
+
 /* Cards section */
 .cards-section {
     background: white;
@@ -473,6 +541,14 @@ h4 {
     
     .filter-controls {
         grid-template-columns: 1fr;
+    }
+    
+    .date-filter-controls select {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+    
+    .date-input-group input[type="date"] {
+        font-size: 16px; /* Prevent zoom on iOS */
     }
     
     .card-details {

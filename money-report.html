@@ -52,6 +52,28 @@
                     <option value="name">Nombre de Tarjeta</option>
                 </select>
             </div>
+            <div class="date-filter-section">
+                <h4>Filtros por Fecha</h4>
+                <div class="date-filter-controls">
+                    <select id="dateRangePreset">
+                        <option value="all">Todas las fechas</option>
+                        <option value="today">Hoy</option>
+                        <option value="yesterday">Ayer</option>
+                        <option value="this-week">Esta semana</option>
+                        <option value="last-week">La semana pasada</option>
+                        <option value="this-month">Este mes</option>
+                        <option value="last-month">El mes pasado</option>
+                        <option value="custom">Fecha específica</option>
+                    </select>
+                </div>
+                <div class="date-range-inputs" id="dateRangeInputs" style="display: none;">
+                    <div class="date-input-group">
+                        <label for="specificDate">Seleccionar fecha:</label>
+                        <input type="date" id="specificDate">
+                    </div>
+                    <button id="applyDateRange" class="btn btn-primary">Aplicar Fecha</button>
+                </div>
+            </div>
         </div>
 
         <div class="cards-section">
@@ -67,6 +89,91 @@
         const t = window.TrelloPowerUp.iframe();
         let allCardsData = [];
         let filteredCardsData = [];
+        let currentDateFilter = {
+            type: 'all',
+            startDate: null,
+            endDate: null
+        };
+
+        // Date utility functions
+        const DateUtils = {
+            // Get date range for predefined filters
+            getDateRange: function(preset) {
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                
+                switch(preset) {
+                    case 'today':
+                        return {
+                            startDate: new Date(today),
+                            endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+                        };
+                    
+                    case 'yesterday':
+                        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+                        return {
+                            startDate: yesterday,
+                            endDate: new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1)
+                        };
+                    
+                    case 'this-week':
+                        const startOfWeek = new Date(today);
+                        startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+                        const endOfWeek = new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+                        return {
+                            startDate: startOfWeek,
+                            endDate: endOfWeek
+                        };
+                    
+                    case 'last-week':
+                        const lastWeekStart = new Date(today);
+                        lastWeekStart.setDate(today.getDate() - today.getDay() - 7);
+                        const lastWeekEnd = new Date(lastWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+                        return {
+                            startDate: lastWeekStart,
+                            endDate: lastWeekEnd
+                        };
+                    
+                    case 'this-month':
+                        return {
+                            startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+                            endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+                        };
+                    
+                    case 'last-month':
+                        return {
+                            startDate: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+                            endDate: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+                        };
+                    
+                    default:
+                        return { startDate: null, endDate: null };
+                }
+            },
+            
+            // Check if a transaction date falls within the filter range
+            isDateInRange: function(transactionDate, startDate, endDate) {
+                if (!startDate && !endDate) return true;
+                if (!transactionDate) return false;
+                
+                // Parse transaction date (format: YYYY-MM-DD)
+                const date = new Date(transactionDate + 'T00:00:00');
+                
+                if (startDate && date < startDate) return false;
+                if (endDate && date > endDate) return false;
+                
+                return true;
+            },
+            
+            // Format date for display
+            formatDate: function(date) {
+                return date.toLocaleDateString('es-MX', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            }
+        };
 
         // Utility functions for money calculations (included locally)
         const MoneyTracker = {
@@ -144,9 +251,28 @@
             });
         }
 
+        // Get current filtered data based on date filter only (for summary)
+        function getCurrentFilteredData() {
+            if (currentDateFilter.type === 'all') {
+                return allCardsData;
+            }
+            
+            return allCardsData.filter(function(item) {
+                const transactionDate = item.moneyData.transactionDate;
+                return DateUtils.isDateInRange(
+                    transactionDate, 
+                    currentDateFilter.startDate, 
+                    currentDateFilter.endDate
+                );
+            });
+        }
+
         // Update summary statistics
         function updateSummary() {
-            if (allCardsData.length === 0) {
+            // Get current filtered data for summary
+            const dataToSummarize = getCurrentFilteredData();
+            
+            if (dataToSummarize.length === 0) {
                 document.getElementById('totalAmount').textContent = '$0.00 MXN';
                 document.getElementById('totalPaid').textContent = '$0.00 MXN';
                 document.getElementById('totalOwed').textContent = '$0.00 MXN';
@@ -158,7 +284,7 @@
             let totalPaid = 0;
             let totalPercentage = 0;
 
-            allCardsData.forEach(function(item) {
+            dataToSummarize.forEach(function(item) {
                 const data = item.moneyData;
                 const calculations = MoneyTracker.calculatePayments(
                     data.totalAmount || 0,
@@ -171,7 +297,7 @@
             });
 
             const totalOwed = totalAmount - totalPaid;
-            const averagePercentage = Math.round(totalPercentage / allCardsData.length * 10) / 10;
+            const averagePercentage = Math.round(totalPercentage / dataToSummarize.length * 10) / 10;
 
             document.getElementById('totalAmount').textContent = 
                 MoneyTracker.formatMoney(totalAmount);
@@ -191,16 +317,34 @@
             filteredCardsData = allCardsData.filter(function(item) {
                 const percentage = item.moneyData.paymentsPercentage || 0;
                 
+                // Status filter
+                let statusMatch = true;
                 switch(statusFilter) {
                     case 'paid':
-                        return percentage >= 100;
+                        statusMatch = percentage >= 100;
+                        break;
                     case 'partial':
-                        return percentage > 0 && percentage < 100;
+                        statusMatch = percentage > 0 && percentage < 100;
+                        break;
                     case 'unpaid':
-                        return percentage === 0;
+                        statusMatch = percentage === 0;
+                        break;
                     default:
-                        return true;
+                        statusMatch = true;
                 }
+                
+                // Date filter
+                let dateMatch = true;
+                if (currentDateFilter.type !== 'all') {
+                    const transactionDate = item.moneyData.transactionDate;
+                    dateMatch = DateUtils.isDateInRange(
+                        transactionDate, 
+                        currentDateFilter.startDate, 
+                        currentDateFilter.endDate
+                    );
+                }
+                
+                return statusMatch && dateMatch;
             });
 
             // Sort cards
@@ -278,15 +422,66 @@
             container.innerHTML = cardsHTML;
         }
 
+        // Handle date range preset changes
+        function handleDateRangePreset() {
+            const preset = document.getElementById('dateRangePreset').value;
+            const customInputs = document.getElementById('dateRangeInputs');
+            
+            if (preset === 'custom') {
+                customInputs.style.display = 'block';
+            } else {
+                customInputs.style.display = 'none';
+                updateDateFilter(preset);
+            }
+        }
+        
+        // Update date filter
+        function updateDateFilter(preset, customDate = null) {
+            if (preset === 'custom' && customDate) {
+                const selectedDate = new Date(customDate);
+                currentDateFilter = {
+                    type: 'custom',
+                    startDate: new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()),
+                    endDate: new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 23, 59, 59, 999)
+                };
+            } else if (preset !== 'custom') {
+                const dateRange = DateUtils.getDateRange(preset);
+                currentDateFilter = {
+                    type: preset,
+                    startDate: dateRange.startDate,
+                    endDate: dateRange.endDate
+                };
+            }
+            
+            // Update summary and filter cards
+            updateSummary();
+            filterAndDisplayCards();
+        }
+        
+        // Apply custom date
+        function applyCustomDateRange() {
+            const specificDate = document.getElementById('specificDate').value;
+            
+            if (!specificDate) {
+                alert('Por favor selecciona una fecha');
+                return;
+            }
+            
+            updateDateFilter('custom', specificDate);
+        }
+
         // Export to CSV
         function exportToCSV() {
-            if (allCardsData.length === 0) {
-                alert('No hay datos para exportar');
+            const dataToExport = getCurrentFilteredData();
+            
+            if (dataToExport.length === 0) {
+                alert('No hay datos para exportar con los filtros actuales');
                 return;
             }
 
             const headers = [
                 'Tarjeta',
+                'Fecha de Transacción',
                 'Monto Total (MXN)',
                 'Porcentaje Pagado (%)',
                 'Monto Pagado (MXN)',
@@ -294,7 +489,7 @@
                 'Estado'
             ];
 
-            const rows = allCardsData.map(function(item) {
+            const rows = dataToExport.map(function(item) {
                 const card = item.card;
                 const data = item.moneyData;
                 const calculations = MoneyTracker.calculatePayments(
@@ -304,9 +499,14 @@
 
                 const status = calculations.percentage >= 100 ? 'Pagado' : 
                               calculations.percentage > 0 ? 'Parcial' : 'Sin pagar';
+                
+                const transactionDate = data.transactionDate ? 
+                    new Date(data.transactionDate + 'T00:00:00').toLocaleDateString('es-MX') : 
+                    'N/A';
 
                 return [
                     `"${card.name.replace(/"/g, '""')}"`,
+                    transactionDate,
                     calculations.total,
                     calculations.percentage,
                     calculations.paid,
@@ -323,7 +523,15 @@
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            link.setAttribute('download', `reporte-financiero-${new Date().toISOString().split('T')[0]}.csv`);
+            
+            // Generate filename with date range info
+            let filename = 'reporte-financiero';
+            if (currentDateFilter.type !== 'all') {
+                filename += `-${currentDateFilter.type}`;
+            }
+            filename += `-${new Date().toISOString().split('T')[0]}.csv`;
+            
+            link.setAttribute('download', filename);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
@@ -335,6 +543,8 @@
         document.getElementById('exportReport').addEventListener('click', exportToCSV);
         document.getElementById('statusFilter').addEventListener('change', filterAndDisplayCards);
         document.getElementById('sortBy').addEventListener('change', filterAndDisplayCards);
+        document.getElementById('dateRangePreset').addEventListener('change', handleDateRangePreset);
+        document.getElementById('applyDateRange').addEventListener('click', applyCustomDateRange);
 
         // Load data when popup opens
         loadReportData();

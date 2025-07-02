@@ -42,6 +42,11 @@
                 <input type="number" id="paymentsInput" min="0" max="100" step="0.1" placeholder="ej. 25.5" />
                 <small>Este campo se sincroniza con el campo "Pagos" de la tarjeta</small>
             </div>
+            <div class="input-group">
+                <label for="transactionDate">Fecha de Transacción:</label>
+                <input type="date" id="transactionDate" />
+                <small>Fecha asociada a esta transacción para filtrar reportes</small>
+            </div>
             <button id="updateMoney" class="btn btn-primary">Actualizar Información</button>
         </div>
 
@@ -104,6 +109,7 @@
                 currentData = moneyData || {
                     totalAmount: 0,
                     paymentsPercentage: 0,
+                    transactionDate: new Date().toISOString().split('T')[0], // Default to today
                     history: []
                 };
 
@@ -115,6 +121,7 @@
                 currentData = {
                     totalAmount: 0,
                     paymentsPercentage: 0,
+                    transactionDate: new Date().toISOString().split('T')[0], // Default to today
                     history: []
                 };
                 updateDisplay();
@@ -140,6 +147,7 @@
             // Update input fields
             document.getElementById('moneyInput').value = calculations.total || '';
             document.getElementById('paymentsInput').value = calculations.percentage || '';
+            document.getElementById('transactionDate').value = currentData.transactionDate || new Date().toISOString().split('T')[0];
 
             // Update history
             updateHistoryDisplay();
@@ -176,13 +184,16 @@
         function saveMoneyData() {
             const moneyInput = document.getElementById('moneyInput').value;
             const paymentsInput = document.getElementById('paymentsInput').value;
+            const transactionDateInput = document.getElementById('transactionDate').value;
 
             const totalAmount = MoneyTracker.parseMoneyInput(moneyInput);
             const paymentsPercentage = Math.max(0, Math.min(100, parseFloat(paymentsInput) || 0));
+            const transactionDate = transactionDateInput || new Date().toISOString().split('T')[0];
 
             // Add to history if there's a change
             const hasChanged = currentData.totalAmount !== totalAmount || 
-                              currentData.paymentsPercentage !== paymentsPercentage;
+                              currentData.paymentsPercentage !== paymentsPercentage ||
+                              currentData.transactionDate !== transactionDate;
 
             if (hasChanged) {
                 currentData.history = currentData.history || [];
@@ -201,6 +212,7 @@
 
             currentData.totalAmount = totalAmount;
             currentData.paymentsPercentage = paymentsPercentage;
+            currentData.transactionDate = transactionDate;
 
             return t.set('card', 'shared', 'moneyTracker', currentData)
             .then(function() {
@@ -230,7 +242,7 @@
         document.getElementById('clearHistory').addEventListener('click', clearHistory);
 
         // Enter key support for inputs
-        ['moneyInput', 'paymentsInput'].forEach(function(inputId) {
+        ['moneyInput', 'paymentsInput', 'transactionDate'].forEach(function(inputId) {
             document.getElementById(inputId).addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     saveMoneyData();
