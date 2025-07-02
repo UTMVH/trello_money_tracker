@@ -401,6 +401,19 @@ h4 {
     border-color: #0079bf;
 }
 
+.single-date-container,
+.range-date-container {
+    width: 100%;
+}
+
+.range-date-container .date-input-group {
+    margin-bottom: 12px;
+}
+
+.range-date-container .date-input-group:last-of-type {
+    margin-bottom: 16px;
+}
+
 /* Cards section */
 .cards-section {
     background: white;

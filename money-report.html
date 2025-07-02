@@ -64,14 +64,28 @@
                         <option value="this-month">Este mes</option>
                         <option value="last-month">El mes pasado</option>
                         <option value="custom">Fecha específica</option>
+                        <option value="range">Rango de fechas</option>
                     </select>
                 </div>
                 <div class="date-range-inputs" id="dateRangeInputs" style="display: none;">
-                    <div class="date-input-group">
-                        <label for="specificDate">Seleccionar fecha:</label>
-                        <input type="date" id="specificDate">
+                    <div id="singleDateInput" class="single-date-container">
+                        <div class="date-input-group">
+                            <label for="specificDate">Seleccionar fecha:</label>
+                            <input type="date" id="specificDate">
+                        </div>
+                        <button id="applySingleDate" class="btn btn-primary">Aplicar Fecha</button>
                     </div>
-                    <button id="applyDateRange" class="btn btn-primary">Aplicar Fecha</button>
+                    <div id="rangeDateInput" class="range-date-container" style="display: none;">
+                        <div class="date-input-group">
+                            <label for="startDate">Fecha de inicio:</label>
+                            <input type="date" id="startDate">
+                        </div>
+                        <div class="date-input-group">
+                            <label for="endDate">Fecha de fin:</label>
+                            <input type="date" id="endDate">
+                        </div>
+                        <button id="applyDateRange" class="btn btn-primary">Aplicar Rango</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -156,8 +170,9 @@
                 if (!startDate && !endDate) return true;
                 if (!transactionDate) return false;
                 
-                // Parse transaction date (format: YYYY-MM-DD)
-                const date = new Date(transactionDate + 'T00:00:00');
+                // Parse transaction date (format: YYYY-MM-DD) ensuring local timezone
+                const dateParts = transactionDate.split('-');
+                const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
                 
                 if (startDate && date < startDate) return false;
                 if (endDate && date > endDate) return false;
@@ -426,9 +441,17 @@
         function handleDateRangePreset() {
             const preset = document.getElementById('dateRangePreset').value;
             const customInputs = document.getElementById('dateRangeInputs');
+            const singleDateInput = document.getElementById('singleDateInput');
+            const rangeDateInput = document.getElementById('rangeDateInput');
             
             if (preset === 'custom') {
                 customInputs.style.display = 'block';
+                singleDateInput.style.display = 'block';
+                rangeDateInput.style.display = 'none';
+            } else if (preset === 'range') {
+                customInputs.style.display = 'block';
+                singleDateInput.style.display = 'none';
+                rangeDateInput.style.display = 'block';
             } else {
                 customInputs.style.display = 'none';
                 updateDateFilter(preset);
@@ -436,15 +459,38 @@
         }
         
         // Update date filter
-        function updateDateFilter(preset, customDate = null) {
+        function updateDateFilter(preset, customDate = null, startDate = null, endDate = null) {
             if (preset === 'custom' && customDate) {
-                const selectedDate = new Date(customDate);
+                // Parse custom date ensuring local timezone
+                const dateParts = customDate.split('-');
+                const year = parseInt(dateParts[0]);
+                const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
+                const day = parseInt(dateParts[2]);
+                
                 currentDateFilter = {
                     type: 'custom',
-                    startDate: new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()),
-                    endDate: new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 23, 59, 59, 999)
+                    startDate: new Date(year, month, day, 0, 0, 0, 0),
+                    endDate: new Date(year, month, day, 23, 59, 59, 999)
                 };
-            } else if (preset !== 'custom') {
+            } else if (preset === 'range' && startDate && endDate) {
+                // Parse start date
+                const startParts = startDate.split('-');
+                const startYear = parseInt(startParts[0]);
+                const startMonth = parseInt(startParts[1]) - 1;
+                const startDay = parseInt(startParts[2]);
+                
+                // Parse end date
+                const endParts = endDate.split('-');
+                const endYear = parseInt(endParts[0]);
+                const endMonth = parseInt(endParts[1]) - 1;
+                const endDay = parseInt(endParts[2]);
+                
+                currentDateFilter = {
+                    type: 'range',
+                    startDate: new Date(startYear, startMonth, startDay, 0, 0, 0, 0),
+                    endDate: new Date(endYear, endMonth, endDay, 23, 59, 59, 999)
+                };
+            } else if (preset !== 'custom' && preset !== 'range') {
                 const dateRange = DateUtils.getDateRange(preset);
                 currentDateFilter = {
                     type: preset,
@@ -458,8 +504,8 @@
             filterAndDisplayCards();
         }
         
-        // Apply custom date
-        function applyCustomDateRange() {
+        // Apply custom single date
+        function applySingleDate() {
             const specificDate = document.getElementById('specificDate').value;
             
             if (!specificDate) {
@@ -468,6 +514,24 @@
             }
             
             updateDateFilter('custom', specificDate);
+        }
+        
+        // Apply custom date range
+        function applyDateRange() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Por favor selecciona ambas fechas (inicio y fin)');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('La fecha de inicio debe ser anterior a la fecha de fin');
+                return;
+            }
+            
+            updateDateFilter('range', null, startDate, endDate);
         }
 
         // Export to CSV
@@ -501,7 +565,11 @@
                               calculations.percentage > 0 ? 'Parcial' : 'Sin pagar';
                 
                 const transactionDate = data.transactionDate ? 
-                    new Date(data.transactionDate + 'T00:00:00').toLocaleDateString('es-MX') : 
+                    (() => {
+                        const dateParts = data.transactionDate.split('-');
+                        const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                        return date.toLocaleDateString('es-MX');
+                    })() : 
                     'N/A';
 
                 return [
@@ -527,7 +595,16 @@
             // Generate filename with date range info
             let filename = 'reporte-financiero';
             if (currentDateFilter.type !== 'all') {
-                filename += `-${currentDateFilter.type}`;
+                if (currentDateFilter.type === 'custom') {
+                    const dateStr = DateUtils.formatDate(currentDateFilter.startDate).replace(/\s/g, '-');
+                    filename += `-${dateStr}`;
+                } else if (currentDateFilter.type === 'range') {
+                    const startStr = DateUtils.formatDate(currentDateFilter.startDate).replace(/\s/g, '-');
+                    const endStr = DateUtils.formatDate(currentDateFilter.endDate).replace(/\s/g, '-');
+                    filename += `-${startStr}_a_${endStr}`;
+                } else {
+                    filename += `-${currentDateFilter.type}`;
+                }
             }
             filename += `-${new Date().toISOString().split('T')[0]}.csv`;
             
@@ -544,7 +621,8 @@
         document.getElementById('statusFilter').addEventListener('change', filterAndDisplayCards);
         document.getElementById('sortBy').addEventListener('change', filterAndDisplayCards);
         document.getElementById('dateRangePreset').addEventListener('change', handleDateRangePreset);
-        document.getElementById('applyDateRange').addEventListener('click', applyCustomDateRange);
+        document.getElementById('applySingleDate').addEventListener('click', applySingleDate);
+        document.getElementById('applyDateRange').addEventListener('click', applyDateRange);
 
         // Load data when popup opens
         loadReportData();
